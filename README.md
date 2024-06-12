@@ -1,44 +1,47 @@
-## Instructions
+# Architecture
+![alt text](https://github.com/anirudh711/Intellimark/blob/main/architecture.png)
 
+# Overview of the Project
 
-Backend, We are using-
-main.py flask as the server with two endpoints and one reset endpoint
-model.py for topic modelling 
-parser for parsing web links
-databases are-
-faiss - for storing vectors  (this is stored in the file system under the name "index")
-mongo - for storing everything else
+The project uses the following to achieve the task as an AI-powered bookmark manager with:
 
-To setup run,
-docker-compose up --build
-this will setup mongo, mongo-express (to view), flask
+- Parser (web links, documents)
+- BERT topic model
+- FAISS vector database to store BERT embeddings
+- MongoDB to store documents, users
+- Flask server for inference endpoints and CRUD operations
+- Docker for containerizing
+- Extension
+- Frontend
 
-flask in docker is not setup proprly, so run flask only locally and keep the rest in docker as it is
-`cd ai-server && python main.py`
+## Components
 
-Now, you have flask running locally, mongo and mongo-express running on docker
+### Parser
 
-to login to mongo express, jump to localhost:8081 and type admin/pass for credentials, you will be able to view documents 
+The user will be able to use the extension to either mark the site as a favorite or bulk upload all their bookmarks to the system. The parser comes into play to derive meaningful data from the web link to further use it for topic modeling. The parser is vital for accurate topic modeling.
 
-Flask contains two documents in the database bert in mongo
-- Links - to store all link related metadata
-- counter - to correleate between faiss (the vector database) index and mongo index since faiss stores only vectors to do similarity checks
+### BERT
 
-once its all setup, you can - 
+This is a topic model called BERT trained on the Wikipedia dataset. The bookmarks of the user, after running through the parser, are passed into the model to create embeddings and to predict the approximate topics of the content from the user’s bookmark.
 
-- to save a bookmark
-```
-curl --location 'http://127.0.0.1:5000/save_bookmark' \
---header 'Content-Type: application/json' \
---data '{"link":"https://en.wikipedia.org/wiki/Chicago"}'
-```
+### FAISS and MongoDB
 
-- to query a bookmark
-```
-curl --location 'http://127.0.0.1:5000/query?q=Buildings%20are%20very%20prominent%20in%20this%20city'
-```
+The embeddings from the previous step will be stored in the vector database and the original document parsed from the user will be stored in MongoDB tagged under the user’s ID.
+MongoDB will also store the user-related data for them to maintain sessions.
+FAISS database is specifically used for this purpose since we can run algorithms for similarity that are built in FAISS. In our case, we are using cosine similarity, which is used to rank and output documents when a query string is entered on the frontend to search the user’s bookmarks.
 
-- to reset to default state
-```
-curl --location 'http://127.0.0.1:5000/reset'
-```
+### Flask Server
+
+- It contains the parsing mechanism.
+- Flask server exposes the BERT topic model as an inference endpoint to create embeddings and make predictions.
+- It also maintains sessions, and stores and manages users and documents.
+
+### Extension
+
+The role of the extension is to control the active tabs of the user. As you click on different tabs and find something you want to bookmark, you can click on the extension and bookmark it. The extension will take into account the current active tab (the tab you want to bookmark) and do the process. The process will be to upload the bookmark to the server, parse it, do topic modeling, and store it in FAISS for querying and MongoDB for truth checks.
+
+**Note:** The extension also allows you to bulk upload all your current bookmarks (supported mainly on Chromium browsers).
+
+### Frontend
+
+This is the gateway to querying all the saved bookmarks. Users will be able to log in and see a list of bookmarks saved. The user will also be able to query the said bookmarks with natural language, and clicking on each bookmark will take you to the respective site.
